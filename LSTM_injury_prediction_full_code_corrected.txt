@@ -1,0 +1,112 @@
+
+LSTM-Based Injury Prediction Model for Badminton Players
+--------------------------------------------------------
+
+This script implements a Recurrent Neural Network (RNN) with Long Short-Term Memory (LSTM) units 
+to predict injury risks in badminton players based on historical and current data. 
+The model architecture, training process, and evaluation methods are provided below.
+
+Dataset Requirements:
+----------------------
+The dataset should contain the following columns:
+- Player_ID: Unique identifier for each player
+- Age: Age of the player
+- Height_cm: Height of the player in centimeters
+- Weight_kg: Weight of the player in kilograms
+- Previous_Injuries: Number of previous injuries the player has had
+- Matches_Played: Total number of matches the player has played
+- Training_Hours_Per_Week: Average number of training hours per week
+- Training_Intensity: The intensity of training (Low, Medium, High)
+- Injury_Type: Type of injury (None, Ankle, Knee, Shoulder)
+- Recovery_Days: Number of days required for recovery after an injury
+- Physical_Condition_Score: A score from 1 to 10 representing the player's physical condition
+- Singles_Doubles: Indicates whether the player participates in Singles or Doubles
+- Injury_Risk: Binary indicator (0 or 1) showing whether the player is at risk of injury
+
+Preprocessing:
+--------------
+The script includes normalization of numerical features and encoding of categorical features. 
+Sequences of player data over time are created to capture temporal dependencies for the LSTM model.
+
+Model Architecture:
+-------------------
+The model uses LSTM layers to handle the sequential nature of the data, 
+followed by a Dense layer with a sigmoid activation function for binary classification.
+
+Training and Evaluation:
+-------------------------
+The model is trained using the Adam optimizer and binary cross-entropy loss function. 
+Accuracy, precision, recall, and F1-score are used to evaluate the model's performance.
+
+
+import numpy as np
+import pandas as pd
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import LSTM, Dense
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+
+# Load your dataset (Replace 'your_dataset.csv' with the actual file path)
+df = pd.read_csv('your_dataset.csv')
+
+# Preprocessing
+scaler = StandardScaler()
+df[['Age', 'Height_cm', 'Weight_kg', 'Previous_Injuries', 'Matches_Played', 
+    'Training_Hours_Per_Week', 'Recovery_Days', 'Physical_Condition_Score']] = scaler.fit_transform(
+    df[['Age', 'Height_cm', 'Weight_kg', 'Previous_Injuries', 'Matches_Played', 
+        'Training_Hours_Per_Week', 'Recovery_Days', 'Physical_Condition_Score']])
+
+label_encoder = LabelEncoder()
+df['Training_Intensity'] = label_encoder.fit_transform(df['Training_Intensity'])
+df['Injury_Type'] = label_encoder.fit_transform(df['Injury_Type'])
+df['Singles_Doubles'] = label_encoder.fit_transform(df['Singles_Doubles'])
+
+# Creating sequences
+X = []
+y = []
+sequence_length = 10
+
+for i in range(len(df) - sequence_length):
+    X.append(df.iloc[i:i + sequence_length].values)
+    y.append(df['Injury_Risk'].iloc[i + sequence_length])
+
+X = np.array(X)
+y = np.array(y)
+
+# Splitting data
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Building the model
+model = Sequential()
+model.add(LSTM(50, activation='relu', input_shape=(X_train.shape[1], X_train.shape[2])))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+# Training the model
+model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_test, y_test))
+
+# Predicting and evaluating
+y_pred = (model.predict(X_test) > 0.5).astype(int)
+print(f'Accuracy: {accuracy_score(y_test, y_pred)}')
+print(f'Precision: {precision_score(y_test, y_pred)}')
+print(f'Recall: {recall_score(y_test, y_pred)}')
+print(f'F1 Score: {f1_score(y_test, y_pred)}')
+
+# Saving the trained model
+model.save('injury_prediction_model.h5')
+
+
+Guidelines for Reuse:
+---------------------
+1. **Dataset Preparation**: Ensure your dataset is in the correct format with all required columns.
+2. **Preprocessing**: The provided preprocessing steps assume numerical data normalization and categorical data encoding.
+3. **Model Training**: Adjust the number of epochs and batch size as needed based on your dataset size and computational resources.
+4. **Evaluation**: The script evaluates model performance using common metrics. You can add more metrics if necessary.
+5. **Model Saving**: The trained model is saved as 'injury_prediction_model.h5', which can be loaded for future predictions.
+
+To reuse or extend this code:
+- Modify the dataset path and structure as per your needs.
+- Experiment with different model architectures or hyperparameters to improve performance.
+- Integrate this model into a larger system or use it as a baseline for further research.
